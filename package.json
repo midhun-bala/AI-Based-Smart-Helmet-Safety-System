@@ -1,227 +1,28 @@
-import { Bell, HardHat, MessageSquare, Database, Activity, AlertTriangle, TrendingUp, Cpu } from 'lucide-react';
-import StatCard from '../components/StatCard';
-import AlertCard from '../components/AlertCard';
-import { Alert, HelmetDevice, DetectionEvent, SystemMetrics } from '../types';
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-  BarChart, Bar, PieChart, Pie, Cell, Legend
-} from 'recharts';
-import { weeklyAlertData } from '../data/mockData';
-import { format } from 'date-fns';
-
-interface DashboardProps {
-  alerts: Alert[];
-  helmets: HelmetDevice[];
-  detectionHistory: DetectionEvent[];
-  metrics: SystemMetrics;
-  newAlertPulse: boolean;
-  onAcknowledge: (id: string) => void;
-  onDismiss: (id: string) => void;
-}
-
-const PIE_COLORS = ['#f59e0b', '#ef4444', '#f97316'];
-
-export default function Dashboard({ alerts, helmets, detectionHistory, metrics, newAlertPulse, onAcknowledge, onDismiss }: DashboardProps) {
-  const criticalCount = alerts.filter(a => a.severity === 'critical' && !a.acknowledged).length;
-  const onlineHelmets = helmets.filter(h => h.status === 'online').length;
-
-  const pieData = [
-    { name: 'Drowsiness', value: alerts.filter(a => a.type === 'drowsiness').length },
-    { name: 'Accident', value: alerts.filter(a => a.type === 'accident').length },
-    { name: 'Alcohol', value: alerts.filter(a => a.type === 'alcohol').length },
-  ];
-
-  const chartHistory = detectionHistory.slice(-12).map(d => ({
-    time: format(d.timestamp, 'HH:mm'),
-    drowsiness: Math.round(d.drowsinessLevel),
-    alcohol: Math.round(d.alcoholLevel * 1000),
-    risk: Math.round(d.accidentRisk),
-  }));
-
-  return (
-    <div className="space-y-6">
-      {/* Critical Alert Banner */}
-      {criticalCount > 0 && (
-        <div className={`flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 ${newAlertPulse ? 'animate-pulse' : ''}`}>
-          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
-          <p className="text-sm text-red-300 font-medium">
-            <span className="text-red-400 font-bold">{criticalCount} critical alert{criticalCount > 1 ? 's' : ''}</span>
-            {' '}require immediate attention — Emergency SMS notifications dispatched
-          </p>
-          <div className="ml-auto flex items-center gap-1.5">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-            <span className="text-xs text-red-400 font-medium">LIVE</span>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Alerts"
-          value={metrics.totalAlerts}
-          subtitle="All time events"
-          icon={Bell}
-          color="red"
-          trend={{ value: 12, label: 'vs yesterday' }}
-          pulse
-        />
-        <StatCard
-          title="Active Helmets"
-          value={`${onlineHelmets}/${helmets.length}`}
-          subtitle="Connected devices"
-          icon={HardHat}
-          color="emerald"
-          pulse
-        />
-        <StatCard
-          title="SMS Sent"
-          value={metrics.smsSent}
-          subtitle="Via Twilio API"
-          icon={MessageSquare}
-          color="blue"
-          trend={{ value: 8, label: 'this session' }}
-        />
-        <StatCard
-          title="Firebase Events"
-          value={metrics.firebaseEvents.toLocaleString()}
-          subtitle="Database records"
-          icon={Database}
-          color="purple"
-          pulse
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Live Detection Chart */}
-        <div className="lg:col-span-2 bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-white font-semibold">Live Detection Feed</h3>
-              <p className="text-xs text-gray-500">Real-time AI module output</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-xs text-emerald-400">Live</span>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartHistory} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-              <defs>
-                <linearGradient id="drowGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="riskGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="time" tick={{ fill: '#6b7280', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '12px' }}
-                labelStyle={{ color: '#9ca3af' }}
-              />
-              <Area type="monotone" dataKey="drowsiness" stroke="#f59e0b" strokeWidth={2} fill="url(#drowGrad)" name="Drowsiness %" />
-              <Area type="monotone" dataKey="risk" stroke="#ef4444" strokeWidth={2} fill="url(#riskGrad)" name="Accident Risk %" />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div className="flex items-center gap-4 mt-2">
-            <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-amber-400 rounded" /><span className="text-xs text-gray-500">Drowsiness</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-red-400 rounded" /><span className="text-xs text-gray-500">Accident Risk</span></div>
-          </div>
-        </div>
-
-        {/* Alert Type Distribution */}
-        <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
-          <h3 className="text-white font-semibold mb-1">Alert Distribution</h3>
-          <p className="text-xs text-gray-500 mb-4">By detection type</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
-                {pieData.map((_, index) => (
-                  <Cell key={index} fill={PIE_COLORS[index]} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '12px' }} />
-              <Legend wrapperStyle={{ fontSize: '11px', color: '#9ca3af' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Weekly Bar Chart + Active Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-blue-400" />
-            <h3 className="text-white font-semibold">Weekly Alert Trends</h3>
-          </div>
-          <p className="text-xs text-gray-500 mb-4">Last 7 days by detection type</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={weeklyAlertData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '12px' }} />
-              <Bar dataKey="drowsiness" name="Drowsiness" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="accident" name="Accident" fill="#ef4444" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="alcohol" name="Alcohol" fill="#f97316" radius={[3, 3, 0, 0]} />
-              <Legend wrapperStyle={{ fontSize: '11px', color: '#9ca3af' }} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Recent Alerts */}
-        <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-red-400" />
-            <h3 className="text-white font-semibold">Recent Alerts</h3>
-          </div>
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {alerts.slice(0, 6).map(alert => (
-              <AlertCard
-                key={alert.id}
-                alert={alert}
-                onAcknowledge={onAcknowledge}
-                onDismiss={onDismiss}
-                compact
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* System Status */}
-      <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Cpu className="w-4 h-4 text-cyan-400" />
-          <h3 className="text-white font-semibold">System Integration Status</h3>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { name: 'Flask Backend', status: metrics.apiStatus.flask, desc: 'http://127.0.0.1:5000', icon: '🐍' },
-            { name: 'Firebase DB', status: metrics.apiStatus.firebase, desc: 'Credentials pending', icon: '🔥' },
-            { name: 'Twilio SMS', status: metrics.apiStatus.twilio, desc: 'API keys pending', icon: '📱' },
-            { name: 'AI Module', status: metrics.apiStatus.ai, desc: 'OpenCV + MediaPipe', icon: '🤖' },
-          ].map(({ name, status, desc, icon }) => (
-            <div key={name} className={`p-3.5 rounded-xl border ${status === 'online' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{icon}</span>
-                <div className={`w-2 h-2 rounded-full ${status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              </div>
-              <p className="text-sm font-semibold text-white">{name}</p>
-              <p className={`text-xs font-medium ${status === 'online' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {status === 'online' ? '● Connected' : '◐ Setup Required'}
-              </p>
-              <p className="text-xs text-gray-600 mt-0.5 truncate">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+{
+  "name": "ai-smart-helmet-system",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^0.344.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.6"
+  }
 }
