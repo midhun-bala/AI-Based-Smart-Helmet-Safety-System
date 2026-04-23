@@ -1,0 +1,221 @@
+import { TrendingUp } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ScatterChart, Scatter, Legend
+} from 'recharts';
+import { weeklyAlertData, hourlyRiskData } from '../data/mockData';
+import { DetectionEvent } from '../types';
+import { format } from 'date-fns';
+
+interface AnalyticsPageProps {
+  detectionHistory: DetectionEvent[];
+}
+
+const riderPerformance = [
+  { rider: 'Arjun S.', drowsiness: 12, alcohol: 0, accidents: 0, score: 95 },
+  { rider: 'Priya N.', drowsiness: 34, alcohol: 1, accidents: 0, score: 72 },
+  { rider: 'Ravi K.', drowsiness: 78, alcohol: 0, accidents: 1, score: 48 },
+  { rider: 'Meena P.', drowsiness: 0, alcohol: 2, accidents: 1, score: 35 },
+  { rider: 'Vikram S.', drowsiness: 45, alcohol: 0, accidents: 0, score: 68 },
+  { rider: 'Sunita R.', drowsiness: 22, alcohol: 0, accidents: 0, score: 84 },
+];
+
+const radarData = [
+  { subject: 'Drowsiness', A: 87, B: 65, fullMark: 100 },
+  { subject: 'Accident Risk', A: 35, B: 58, fullMark: 100 },
+  { subject: 'Alcohol', A: 20, B: 40, fullMark: 100 },
+  { subject: 'Night Riding', A: 72, B: 45, fullMark: 100 },
+  { subject: 'Speed', A: 60, B: 80, fullMark: 100 },
+  { subject: 'Fatigue', A: 90, B: 55, fullMark: 100 },
+];
+
+export default function AnalyticsPage({ detectionHistory }: AnalyticsPageProps) {
+  const areaData = detectionHistory.slice(-24).map(d => ({
+    time: format(d.timestamp, 'HH:mm'),
+    drowsiness: Math.round(d.drowsinessLevel),
+    alcohol: parseFloat((d.alcoholLevel * 100).toFixed(1)),
+    risk: Math.round(d.accidentRisk),
+  }));
+
+  const scatterData = detectionHistory.map(d => ({
+    x: Math.round(d.drowsinessLevel),
+    y: Math.round(d.accidentRisk),
+    z: parseFloat((d.alcoholLevel * 100).toFixed(1)),
+  }));
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-blue-400" />
+          Analytics & Insights
+        </h2>
+        <p className="text-sm text-gray-500 mt-0.5">Pattern analysis and safety trend reports</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Avg Drowsiness Score', value: '38%', trend: '▼ 4% better', positive: true },
+          { label: 'Alert Response Time', value: '1.2s', trend: '▼ 0.3s faster', positive: true },
+          { label: 'SMS Delivery Rate', value: '99.1%', trend: '▲ stable', positive: true },
+          { label: 'False Positive Rate', value: '3.2%', trend: '▼ improved', positive: true },
+        ].map(({ label, value, trend, positive }) => (
+          <div key={label} className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-4">
+            <p className="text-2xl font-bold text-white mb-1">{value}</p>
+            <p className="text-xs text-gray-500 mb-2">{label}</p>
+            <p className={`text-xs font-medium ${positive ? 'text-emerald-400' : 'text-red-400'}`}>{trend}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Row 1: Area + Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
+          <h3 className="text-white font-semibold mb-1">24-Hour Detection Trend</h3>
+          <p className="text-xs text-gray-500 mb-4">Combined AI output metrics</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={areaData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+              <defs>
+                <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="time" tick={{ fill: '#6b7280', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '11px' }} />
+              <Area type="monotone" dataKey="drowsiness" stroke="#f59e0b" fill="url(#dg)" strokeWidth={2} name="Drowsiness %" />
+              <Area type="monotone" dataKey="risk" stroke="#ef4444" fill="url(#rg)" strokeWidth={2} name="Accident Risk %" />
+              <Legend wrapperStyle={{ fontSize: '11px', color: '#9ca3af' }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
+          <h3 className="text-white font-semibold mb-1">Hourly Risk Pattern</h3>
+          <p className="text-xs text-gray-500 mb-4">Average accident risk by hour of day</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={hourlyRiskData.filter((_, i) => i % 2 === 0)} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="hour" tick={{ fill: '#6b7280', fontSize: 9 }} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '11px' }} />
+              <Bar dataKey="risk" name="Risk Score" fill="#6366f1" radius={[3, 3, 0, 0]}
+                label={false}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Row 2: Weekly + Radar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
+          <h3 className="text-white font-semibold mb-1">Weekly Alert Breakdown</h3>
+          <p className="text-xs text-gray-500 mb-4">By detection type per day</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={weeklyAlertData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 11 }} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '11px' }} />
+              <Bar dataKey="drowsiness" name="Drowsiness" stackId="a" fill="#f59e0b" />
+              <Bar dataKey="alcohol" name="Alcohol" stackId="a" fill="#f97316" />
+              <Bar dataKey="accident" name="Accident" stackId="a" fill="#ef4444" radius={[3, 3, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: '11px', color: '#9ca3af' }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
+          <h3 className="text-white font-semibold mb-1">Risk Profile Comparison</h3>
+          <p className="text-xs text-gray-500 mb-4">Night vs. Day riding patterns</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <RadarChart data={radarData} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+              <PolarGrid stroke="#1f2937" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 10 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#4b5563', fontSize: 9 }} />
+              <Radar name="Night Riding" dataKey="A" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
+              <Radar name="Day Riding" dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} />
+              <Legend wrapperStyle={{ fontSize: '11px', color: '#9ca3af' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '11px' }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Rider Safety Table */}
+      <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
+        <h3 className="text-white font-semibold mb-4">Rider Safety Scores</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-800">
+                <th className="text-left py-2 px-3 text-xs text-gray-500 font-medium">Rider</th>
+                <th className="text-center py-2 px-3 text-xs text-gray-500 font-medium">Drowsiness Events</th>
+                <th className="text-center py-2 px-3 text-xs text-gray-500 font-medium">Alcohol Alerts</th>
+                <th className="text-center py-2 px-3 text-xs text-gray-500 font-medium">Accidents</th>
+                <th className="text-right py-2 px-3 text-xs text-gray-500 font-medium">Safety Score</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/50">
+              {riderPerformance.map(r => (
+                <tr key={r.rider} className="hover:bg-gray-800/30 transition">
+                  <td className="py-3 px-3 text-white font-medium">{r.rider}</td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${r.drowsiness > 50 ? 'bg-red-500/15 text-red-400' : r.drowsiness > 25 ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                      {r.drowsiness}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${r.alcohol > 0 ? 'bg-orange-500/15 text-orange-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                      {r.alcohol}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${r.accidents > 0 ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                      {r.accidents}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${r.score >= 80 ? 'bg-emerald-500' : r.score >= 60 ? 'bg-amber-400' : 'bg-red-500'}`}
+                          style={{ width: `${r.score}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs font-bold min-w-[32px] text-right ${r.score >= 80 ? 'text-emerald-400' : r.score >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{r.score}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Correlation scatter */}
+      <div className="bg-gray-900/80 border border-gray-800/60 rounded-2xl p-5">
+        <h3 className="text-white font-semibold mb-1">Drowsiness vs. Accident Risk Correlation</h3>
+        <p className="text-xs text-gray-500 mb-4">Each point = one detection reading</p>
+        <ResponsiveContainer width="100%" height={200}>
+          <ScatterChart margin={{ top: 5, right: 10, bottom: 0, left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+            <XAxis dataKey="x" name="Drowsiness %" tick={{ fill: '#6b7280', fontSize: 10 }} />
+            <YAxis dataKey="y" name="Accident Risk %" tick={{ fill: '#6b7280', fontSize: 10 }} />
+            <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px', fontSize: '11px' }} />
+            <Scatter data={scatterData} fill="#8b5cf6" fillOpacity={0.7} name="Reading" />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
